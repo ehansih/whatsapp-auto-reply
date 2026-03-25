@@ -17,7 +17,8 @@ class RulesAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(rule: Rule) {
-            val contact = if (rule.contactName == "*") "Everyone" else rule.contactName
+            val contact = if (rule.contactName == "*") "Everyone"
+                         else rule.contactName.split(",").joinToString(", ") { it.trim() }
             val keyword = if (rule.keyword == "*") "Any message" else "\"${rule.keyword}\""
 
             binding.tvContact.text = contact

@@ -21,7 +21,7 @@
             android:id="@+id/etContact"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="e.g. John, Mom (leave blank for everyone)"
+            android:hint="e.g. John, Mom, +919876543210 (comma separated, blank = everyone)"
             android:inputType="text"
             android:layout_marginBottom="16dp" />
 

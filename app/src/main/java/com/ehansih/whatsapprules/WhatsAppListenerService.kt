@@ -46,7 +46,9 @@ class WhatsAppListenerService : NotificationListenerService() {
 
             for (rule in rules) {
                 val contactMatch = rule.contactName == "*" ||
-                        sender.contains(rule.contactName, ignoreCase = true)
+                        rule.contactName.split(",").map { it.trim() }.any { entry ->
+                            sender.contains(entry, ignoreCase = true)
+                        }
                 val keywordMatch = rule.keyword == "*" ||
                         message.contains(rule.keyword, ignoreCase = true)
 
