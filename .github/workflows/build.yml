@@ -20,14 +20,14 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Build Release APK
-        run: ./gradlew assembleRelease
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
 
       - name: Rename APK with version
         run: |
           VERSION=$(grep versionName app/build.gradle | awk -F'"' '{print $2}')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          cp app/build/outputs/apk/release/app-release-unsigned.apk \
+          cp app/build/outputs/apk/debug/app-debug.apk \
              WA-AutoReply-v${VERSION}.apk
 
       - name: Delete existing release if exists
