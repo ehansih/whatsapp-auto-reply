@@ -1,9 +1,7 @@
-name: Build APK
+name: Build & Release APK
 
 on:
   push:
-    branches: [ master, main ]
-  pull_request:
     branches: [ master, main ]
 
 jobs:
@@ -19,26 +17,52 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Gradle
-        run: |
-          wget -q https://services.gradle.org/distributions/gradle-8.4-bin.zip -O /tmp/gradle.zip
-          sudo unzip -q /tmp/gradle.zip -d /opt/gradle
-          echo "/opt/gradle/gradle-8.4/bin" >> $GITHUB_PATH
-
-      - name: Generate Gradle Wrapper
-        run: gradle wrapper --gradle-version=8.4 --distribution-type=bin
-
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+      - name: Build Release APK
+        run: ./gradlew assembleRelease
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
+      - name: Rename APK with version
+        run: |
+          VERSION=$(grep versionName app/build.gradle | awk -F'"' '{print $2}')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          cp app/build/outputs/apk/release/app-release-unsigned.apk \
+             WA-AutoReply-v${VERSION}.apk
+
+      - name: Delete existing release if exists
+        run: |
+          gh release delete "v${{ env.VERSION }}" --yes 2>/dev/null || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release + upload APK
+        uses: softprops/action-gh-release@v2
         with:
-          name: WA-AutoReply-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          tag_name: v${{ env.VERSION }}
+          name: WA Auto Reply v${{ env.VERSION }}
+          body: |
+            ## WA Auto Reply v${{ env.VERSION }}
+
+            ### What's new
+            - AI smart replies: Groq (free), Gemini (free), DeepSeek, OpenAI, Claude
+            - `{name}`, `{message}` placeholders in all replies
+            - Fixed: WhatsApp replies not sending (WearableExtender bug)
+            - Fixed: Group chat detection
+            - AES-256 encrypted API key storage
+            - Boot persistence after device reboot
+
+            ### Install
+            1. Download `WA-AutoReply-v${{ env.VERSION }}.apk`
+            2. Enable **Install unknown apps** for your browser/file manager
+            3. Open the APK and install
+            4. Grant **Notification Access** when prompted
+            5. Disable battery optimization for the app
+
+            ### Free AI setup
+            Get a free Groq API key at [groq.com](https://groq.com) → add a rule → toggle AI ON → paste key
+          files: WA-AutoReply-v${{ env.VERSION }}.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
