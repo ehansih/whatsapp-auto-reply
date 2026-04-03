@@ -2,6 +2,8 @@ package com.ehansih.whatsapprules
 
 import android.content.Context
 import android.util.Log
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKey
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.OutputStreamWriter
@@ -61,9 +63,21 @@ Rules:
 - Max 2-3 sentences, no formal sign-off
     """.trimIndent()
 
-    // ── Prefs helpers ─────────────────────────────────────────────────────────
-    private fun prefs(context: Context) =
+    // ── Prefs helpers (AES-256 encrypted storage for API keys) ───────────────
+    private fun prefs(context: Context) = try {
+        val masterKey = MasterKey.Builder(context)
+            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+            .build()
+        EncryptedSharedPreferences.create(
+            context, PREFS, masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    } catch (e: Exception) {
+        // Fallback to plain prefs if encryption unavailable (shouldn't happen on API 26+)
+        Log.w(TAG, "EncryptedSharedPreferences unavailable, using plain: ${e.message}")
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+    }
 
     fun saveApiKey(context: Context, provider: AiProvider, key: String) =
         prefs(context).edit().putString(provider.prefKey, key).apply()
