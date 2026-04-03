@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [Rule::class], version = 1, exportSchema = false)
+@Database(entities = [Rule::class], version = 2, exportSchema = false)
 abstract class RulesDatabase : RoomDatabase() {
 
     abstract fun ruleDao(): RuleDao
@@ -20,7 +20,7 @@ abstract class RulesDatabase : RoomDatabase() {
                     context.applicationContext,
                     RulesDatabase::class.java,
                     "rules_database"
-                ).build().also { INSTANCE = it }
+                ).fallbackToDestructiveMigration().build().also { INSTANCE = it }
             }
         }
     }

@@ -13,7 +13,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Contact Name"
+            android:text="Contact Name / Number"
             android:textStyle="bold"
             android:textSize="14sp" />
 
@@ -21,7 +21,7 @@
             android:id="@+id/etContact"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="e.g. John, Mom, +919876543210 (comma separated, blank = everyone)"
+            android:hint="e.g. John, Mom, +919876543210  (blank = everyone)"
             android:inputType="text"
             android:layout_marginBottom="16dp" />
 
@@ -36,22 +36,115 @@
             android:id="@+id/etKeyword"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="e.g. price, hello (leave blank for any message)"
+            android:hint="e.g. urgent, hello  (blank = any message)"
             android:inputType="text"
             android:layout_marginBottom="16dp" />
+
+        <!-- AI Toggle -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardElevation="2dp"
+            app:cardCornerRadius="8dp"
+            xmlns:app="http://schemas.android.com/apk/res-auto">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="🤖 AI Smart Reply"
+                            android:textStyle="bold"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Claude reads the message and writes a contextual reply"
+                            android:textSize="12sp"
+                            android:textColor="#666666" />
+
+                    </LinearLayout>
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/switchAI"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+
+                </LinearLayout>
+
+                <!-- API key field — shown only when AI is ON -->
+                <TextView
+                    android:id="@+id/tvApiKeyLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Claude API Key"
+                    android:textStyle="bold"
+                    android:textSize="13sp"
+                    android:layout_marginTop="12dp"
+                    android:visibility="gone" />
+
+                <EditText
+                    android:id="@+id/etApiKey"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:hint="sk-ant-..."
+                    android:inputType="textPassword"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tvApiKeyHint"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Key saved on device, never uploaded. Get one at console.anthropic.com"
+                    android:textSize="11sp"
+                    android:textColor="#888888"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Fallback / manual reply -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/tvReplyLabel"
+            android:text="Auto-Reply Message *"
+            android:textStyle="bold"
+            android:textSize="14sp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Auto-Reply Message *"
-            android:textStyle="bold"
-            android:textSize="14sp" />
+            android:id="@+id/tvReplyHint"
+            android:text="Use {name} for sender's first name, {message} to echo their text"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            android:layout_marginBottom="4dp" />
 
         <EditText
             android:id="@+id/etReply"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="e.g. I'm busy, will reply later!"
+            android:hint="Hi {name}! I'm busy right now, I'll reply soon 🙏"
             android:inputType="textMultiLine"
             android:minLines="3"
             android:gravity="top"

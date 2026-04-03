@@ -69,7 +69,17 @@ class WhatsAppListenerService : NotificationListenerService() {
                 if (contactMatch && keywordMatch) {
                     // Wait for WhatsApp to fully post the notification with actions
                     delay(1500)
-                    val sent = sendReply(notification, sbn, rule.replyMessage)
+
+                    // Build the final reply text (AI or template)
+                    val finalReply = if (rule.useAI) {
+                        AiReplyEngine.generateReply(
+                            applicationContext, sender, message, rule.replyMessage
+                        )
+                    } else {
+                        AiReplyEngine.applyPlaceholders(rule.replyMessage, sender, message)
+                    }
+
+                    val sent = sendReply(notification, sbn, finalReply)
                     if (sent) {
                         recentlyReplied.add(sbn.key)
                         // Clear after 30s so same contact can get another reply later
