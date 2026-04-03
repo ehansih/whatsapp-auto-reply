@@ -1,3 +1,15 @@
+<div align="center">
+
+# 💬 WhatsApp Auto Reply
+
+WhatsApp auto-reply app with custom rules — Android APK.
+
+![Android](https://img.shields.io/badge/Android-green?logo=android) ![Kotlin](https://img.shields.io/badge/Kotlin-purple?logo=kotlin) ![Last Commit](https://img.shields.io/github/last-commit/ehansih/whatsapp-auto-reply) ![Stars](https://img.shields.io/github/stars/ehansih/whatsapp-auto-reply?style=social)
+
+</div>
+
+---
+
 # WhatsApp Auto Reply
 
 Android app for automated WhatsApp replies with intelligent, customisable response rules.
