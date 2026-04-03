@@ -72,8 +72,10 @@ class WhatsAppListenerService : NotificationListenerService() {
 
                     // Build the final reply text (AI or template)
                     val finalReply = if (rule.useAI) {
+                        val provider = AiProvider.values()
+                            .firstOrNull { it.name == rule.aiProvider } ?: AiProvider.GROQ
                         AiReplyEngine.generateReply(
-                            applicationContext, sender, message, rule.replyMessage
+                            applicationContext, sender, message, rule.replyMessage, provider
                         )
                     } else {
                         AiReplyEngine.applyPlaceholders(rule.replyMessage, sender, message)

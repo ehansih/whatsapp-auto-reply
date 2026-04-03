@@ -90,22 +90,38 @@
 
                 </LinearLayout>
 
-                <!-- API key field — shown only when AI is ON -->
+                <!-- Provider + API key — shown only when AI is ON -->
+                <TextView
+                    android:id="@+id/tvProviderLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="AI Provider"
+                    android:textStyle="bold"
+                    android:textSize="13sp"
+                    android:layout_marginTop="12dp"
+                    android:visibility="gone" />
+
+                <Spinner
+                    android:id="@+id/spinnerProvider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="8dp"
+                    android:visibility="gone" />
+
                 <TextView
                     android:id="@+id/tvApiKeyLabel"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Claude API Key"
+                    android:text="API Key"
                     android:textStyle="bold"
                     android:textSize="13sp"
-                    android:layout_marginTop="12dp"
                     android:visibility="gone" />
 
                 <EditText
                     android:id="@+id/etApiKey"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:hint="sk-ant-..."
+                    android:hint="Paste your API key here"
                     android:inputType="textPassword"
                     android:visibility="gone" />
 
@@ -113,7 +129,7 @@
                     android:id="@+id/tvApiKeyHint"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Key saved on device, never uploaded. Get one at console.anthropic.com"
+                    android:text="Key saved on device only, never uploaded."
                     android:textSize="11sp"
                     android:textColor="#888888"
                     android:visibility="gone" />
