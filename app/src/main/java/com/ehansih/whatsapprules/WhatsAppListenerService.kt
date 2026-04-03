@@ -18,6 +18,9 @@ class WhatsAppListenerService : NotificationListenerService() {
     private val whatsappPackages = setOf("com.whatsapp", "com.whatsapp.w4b")
     private val TAG = "WARules"
 
+    // Track recently replied notifications to avoid duplicate replies
+    private val recentlyReplied = mutableSetOf<String>()
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName !in whatsappPackages) return
 
@@ -31,13 +34,22 @@ class WhatsAppListenerService : NotificationListenerService() {
             Log.d(TAG, "No message found"); return
         }
 
-        Log.d(TAG, "WhatsApp notification — sender: $sender | message: $message")
-
-        // Skip summary notifications
-        if (extras.getBoolean(Notification.EXTRA_IS_GROUP_CONVERSATION, false)) {
-            Log.d(TAG, "Skipping group conversation summary")
-            return
+        // Skip summary / stacked notifications (no remoteInput available on these)
+        if (notification.flags and Notification.FLAG_GROUP_SUMMARY != 0) {
+            Log.d(TAG, "Skipping group summary notification"); return
         }
+
+        // Skip group chats — WhatsApp group messages contain ": " in sender or "@" in title
+        if (isGroupChat(extras, sender)) {
+            Log.d(TAG, "Skipping group chat from: $sender"); return
+        }
+
+        // Avoid replying twice to the same notification key
+        if (sbn.key in recentlyReplied) {
+            Log.d(TAG, "Already replied to ${sbn.key}, skipping"); return
+        }
+
+        Log.d(TAG, "WhatsApp message — sender: $sender | message: $message")
 
         CoroutineScope(Dispatchers.IO).launch {
             val db = RulesDatabase.getDatabase(applicationContext)
@@ -45,65 +57,112 @@ class WhatsAppListenerService : NotificationListenerService() {
             Log.d(TAG, "Checking ${rules.size} rules")
 
             for (rule in rules) {
-                val contactMatch = rule.contactName == "*" ||
+                val contactMatch = rule.contactName.trim() == "*" ||
                         rule.contactName.split(",").map { it.trim() }.any { entry ->
                             sender.contains(entry, ignoreCase = true)
                         }
-                val keywordMatch = rule.keyword == "*" ||
-                        message.contains(rule.keyword, ignoreCase = true)
+                val keywordMatch = rule.keyword.trim() == "*" ||
+                        message.contains(rule.keyword.trim(), ignoreCase = true)
 
                 Log.d(TAG, "Rule [${rule.contactName}/${rule.keyword}] contactMatch=$contactMatch keywordMatch=$keywordMatch")
 
                 if (contactMatch && keywordMatch) {
-                    // Small delay to ensure notification is fully posted
-                    delay(500)
-                    sendReply(notification, sbn, rule.replyMessage)
+                    // Wait for WhatsApp to fully post the notification with actions
+                    delay(1500)
+                    val sent = sendReply(notification, sbn, rule.replyMessage)
+                    if (sent) {
+                        recentlyReplied.add(sbn.key)
+                        // Clear after 30s so same contact can get another reply later
+                        launch {
+                            delay(30_000)
+                            recentlyReplied.remove(sbn.key)
+                        }
+                    }
                     break
                 }
             }
         }
     }
 
-    private fun sendReply(notification: Notification, sbn: StatusBarNotification, replyText: String) {
-        val actions = notification.actions
+    /**
+     * Detects group chats. WhatsApp group messages have sender format "Name: " in the
+     * EXTRA_TEXT, or EXTRA_IS_GROUP_CONVERSATION flag set, or the title contains "@".
+     */
+    private fun isGroupChat(extras: Bundle, sender: String): Boolean {
+        if (extras.getBoolean(Notification.EXTRA_IS_GROUP_CONVERSATION, false)) return true
+        val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
+        // Group messages have format "SenderName: message text"
+        if (text.contains(Regex("^[^:]+: .+"))) {
+            // Only treat as group if the sender doesn't match the sub-sender
+            val subSender = text.substringBefore(":").trim()
+            if (subSender != sender) return true
+        }
+        return false
+    }
 
-        if (actions == null || actions.isEmpty()) {
-            Log.e(TAG, "No actions found on notification — cannot reply")
-            return
+    /**
+     * Tries to send a reply via:
+     * 1. Standard notification actions with remoteInputs
+     * 2. WearableExtender actions (used by modern WhatsApp for inline reply)
+     * Returns true if reply was sent successfully.
+     */
+    private fun sendReply(
+        notification: Notification,
+        sbn: StatusBarNotification,
+        replyText: String
+    ): Boolean {
+        // Collect all actions: standard + wearable extender
+        val standardActions = notification.actions?.toList() ?: emptyList()
+        val wearableActions = Notification.WearableExtender(notification).actions
+        val allActions = standardActions + wearableActions
+
+        Log.d(TAG, "Total actions found: ${allActions.size} (standard=${standardActions.size}, wearable=${wearableActions.size})")
+
+        if (allActions.isEmpty()) {
+            Log.e(TAG, "No actions found — cannot reply")
+            return false
         }
 
-        Log.d(TAG, "Found ${actions.size} actions")
-
-        for (action in actions) {
-            val remoteInputs = action.remoteInputs
-
-            if (remoteInputs == null || remoteInputs.isEmpty()) {
-                Log.d(TAG, "Action '${action.title}' has no remoteInputs, skipping")
-                continue
-            }
-
-            Log.d(TAG, "Sending reply via action '${action.title}'")
-
-            val intent = Intent()
-            val bundle = Bundle()
-            for (remoteInput in remoteInputs) {
-                bundle.putCharSequence(remoteInput.resultKey, replyText)
-            }
-            RemoteInput.addResultsToIntent(remoteInputs, intent, bundle)
-
-            try {
-                action.actionIntent.send(applicationContext, 0, intent)
-                Log.d(TAG, "Reply sent successfully: $replyText")
-                // Dismiss the notification after replying
-                cancelNotification(sbn.key)
-            } catch (e: PendingIntent.CanceledException) {
-                Log.e(TAG, "PendingIntent cancelled: ${e.message}")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error sending reply: ${e.message}")
-            }
-            return
+        // Find the reply action — prefer ones with "reply" or "repl" in title
+        val replyAction = allActions.firstOrNull { action ->
+            val title = action.title?.toString()?.lowercase() ?: ""
+            action.remoteInputs != null &&
+                    action.remoteInputs!!.isNotEmpty() &&
+                    (title.contains("reply") || title.contains("repl") || title.contains("respond"))
+        } ?: allActions.firstOrNull { action ->
+            // Fallback: any action that has remoteInputs
+            action.remoteInputs != null && action.remoteInputs!!.isNotEmpty()
         }
 
-        Log.e(TAG, "No action with remoteInputs found — reply not sent")
+        if (replyAction == null) {
+            Log.e(TAG, "No action with remoteInputs found across ${allActions.size} actions")
+            allActions.forEachIndexed { i, a ->
+                Log.d(TAG, "  Action[$i] title='${a.title}' remoteInputs=${a.remoteInputs?.size ?: 0}")
+            }
+            return false
+        }
+
+        Log.d(TAG, "Using action '${replyAction.title}' with ${replyAction.remoteInputs!!.size} remoteInput(s)")
+
+        val intent = Intent()
+        val bundle = Bundle()
+        for (remoteInput in replyAction.remoteInputs!!) {
+            bundle.putCharSequence(remoteInput.resultKey, replyText)
+            Log.d(TAG, "  RemoteInput key: ${remoteInput.resultKey}")
+        }
+        RemoteInput.addResultsToIntent(replyAction.remoteInputs!!, intent, bundle)
+
+        return try {
+            replyAction.actionIntent.send(applicationContext, 0, intent)
+            Log.d(TAG, "Reply sent successfully: \"$replyText\"")
+            cancelNotification(sbn.key)
+            true
+        } catch (e: PendingIntent.CanceledException) {
+            Log.e(TAG, "PendingIntent cancelled — WhatsApp may have updated the notification: ${e.message}")
+            false
+        } catch (e: Exception) {
+            Log.e(TAG, "Error sending reply: ${e.message}")
+            false
+        }
     }
 }
